@@ -1,0 +1,37 @@
+[package]
+name = "crypto"
+version = "0.1.0"
+edition = "2021"
+
+# make this a library crate
+[lib]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+p256 = { version = "0.13.2", default-features = false, features = [
+    "alloc",
+    "ecdsa",
+] }
+ecdsa = "0.16.2" # Not used directly, but needed to bump transitive dependency, see: https://github.com/CosmWasm/cosmwasm/pull/1899 for details.
+digest = "0.10"
+derive_more = { version = "1.0.0-beta.6", default-features = false, features = [
+    "display",
+    "from",
+] }
+serde = { version = "1.0.103", default-features = false, features = [
+    "derive",
+    "alloc",
+] }
+sha2 = "0.10"
+base64 = "0.22.0"
+
+
+[dev-dependencies]
+sha2 = "0.10"
+hex = { version = "0.4", features = ["serde"] }
+hex-literal = "0.4.1"
+serde_json = "1.0.40"
+p256 = { version = "0.13.2", features = ["alloc", "ecdsa"] }
+sha3 = "0.10"
+english-numbers = "0.3"
+
