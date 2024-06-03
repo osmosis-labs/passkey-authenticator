@@ -3,8 +3,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use p256::{ecdsa::Signature, elliptic_curve::sec1::FromEncodedPoint, EncodedPoint, PublicKey};
 use sha2::{digest::generic_array::GenericArray, Digest, Sha256};
 
-use crate::secp256r1_verify;
-use crate::CryptoResult;
+use crate::{secp256r1_verify, Secp256R1Result};
 
 #[allow(clippy::too_many_arguments)]
 pub fn verify_webauthn(
@@ -15,7 +14,7 @@ pub fn verify_webauthn(
     y: &[u8],
     r: &[u8],
     s: &[u8],
-) -> CryptoResult<bool> {
+) -> Secp256R1Result<bool> {
     // We are making a lot of assumptions here about the coordinates, such as:
     //
     // - the length of the encoded bytes being correct

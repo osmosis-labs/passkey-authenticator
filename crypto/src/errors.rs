@@ -1,33 +1,12 @@
+use alloc::format;
 use alloc::string::String;
 use core::fmt::Debug;
+use cosmwasm_std::StdError;
 use derive_more::Display;
 
 use crate::BT;
 
-pub type CryptoResult<T> = core::result::Result<T, CryptoError>;
-
-#[derive(Debug, Display)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum Aggregation {
-    #[display("List of points is empty")]
-    Empty,
-    #[display("List is not a multiple of {expected_multiple}. Remainder: {remainder}")]
-    NotMultiple {
-        expected_multiple: usize,
-        remainder: usize,
-    },
-}
-
-#[derive(Debug, Display)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum PairingEquality {
-    #[display("List is not a multiple of 48. Remainder: {remainder}")]
-    NotMultipleG1 { remainder: usize },
-    #[display("List is not a multiple of 96. Remainder: {remainder}")]
-    NotMultipleG2 { remainder: usize },
-    #[display("Not the same amount of points passed. Left: {left}, Right: {right}")]
-    UnequalPointAmount { left: usize, right: usize },
-}
+pub type Secp256R1Result<T> = core::result::Result<T, Secp256R1VerifyError>;
 
 #[derive(Debug, Display)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -40,11 +19,7 @@ pub enum InvalidPoint {
 
 #[derive(Display, Debug)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum CryptoError {
-    #[display("Point aggregation error: {source}")]
-    Aggregation { source: Aggregation, backtrace: BT },
-    #[display("Batch verify error: {msg}")]
-    BatchErr { msg: String, backtrace: BT },
+pub enum Secp256R1VerifyError {
     #[display("Crypto error: {msg}")]
     GenericErr { msg: String, backtrace: BT },
     #[display("Invalid hash format")]
@@ -57,117 +32,41 @@ pub enum CryptoError {
     InvalidRecoveryParam { backtrace: BT },
     #[display("Invalid point: {source}")]
     InvalidPoint { source: InvalidPoint, backtrace: BT },
-    #[display("Pairing equality error: {source}")]
-    PairingEquality {
-        source: PairingEquality,
-        backtrace: BT,
-    },
-    #[display("Unknown hash function")]
-    UnknownHashFunction { backtrace: BT },
 }
 
-impl CryptoError {
-    pub fn batch_err(msg: impl Into<String>) -> Self {
-        CryptoError::BatchErr {
-            msg: msg.into(),
-            backtrace: BT::capture(),
-        }
-    }
-
+impl Secp256R1VerifyError {
     pub fn generic_err(msg: impl Into<String>) -> Self {
-        CryptoError::GenericErr {
+        Secp256R1VerifyError::GenericErr {
             msg: msg.into(),
             backtrace: BT::capture(),
         }
     }
 
     pub fn invalid_hash_format() -> Self {
-        CryptoError::InvalidHashFormat {
+        Secp256R1VerifyError::InvalidHashFormat {
             backtrace: BT::capture(),
         }
     }
 
     pub fn invalid_pubkey_format() -> Self {
-        CryptoError::InvalidPubkeyFormat {
+        Secp256R1VerifyError::InvalidPubkeyFormat {
             backtrace: BT::capture(),
         }
     }
 
     pub fn invalid_signature_format() -> Self {
-        CryptoError::InvalidSignatureFormat {
+        Secp256R1VerifyError::InvalidSignatureFormat {
             backtrace: BT::capture(),
         }
     }
 
     pub fn invalid_recovery_param() -> Self {
-        CryptoError::InvalidRecoveryParam {
-            backtrace: BT::capture(),
-        }
-    }
-
-    pub fn unknown_hash_function() -> Self {
-        CryptoError::UnknownHashFunction {
-            backtrace: BT::capture(),
-        }
-    }
-
-    /// Numeric error code that can easily be passed over the
-    /// contract VM boundary.
-    pub fn code(&self) -> u32 {
-        match self {
-            CryptoError::InvalidHashFormat { .. } => 3,
-            CryptoError::InvalidSignatureFormat { .. } => 4,
-            CryptoError::InvalidPubkeyFormat { .. } => 5,
-            CryptoError::InvalidRecoveryParam { .. } => 6,
-            CryptoError::BatchErr { .. } => 7,
-            CryptoError::InvalidPoint { .. } => 8,
-            CryptoError::UnknownHashFunction { .. } => 9,
-            CryptoError::GenericErr { .. } => 10,
-            CryptoError::PairingEquality {
-                source: PairingEquality::NotMultipleG1 { .. },
-                ..
-            } => 11,
-            CryptoError::PairingEquality {
-                source: PairingEquality::NotMultipleG2 { .. },
-                ..
-            } => 12,
-            CryptoError::PairingEquality {
-                source: PairingEquality::UnequalPointAmount { .. },
-                ..
-            } => 13,
-            CryptoError::Aggregation {
-                source: Aggregation::Empty,
-                ..
-            } => 14,
-            CryptoError::Aggregation {
-                source: Aggregation::NotMultiple { .. },
-                ..
-            } => 15,
-        }
-    }
-}
-
-impl From<Aggregation> for CryptoError {
-    #[track_caller]
-    fn from(value: Aggregation) -> Self {
-        Self::Aggregation {
-            source: value,
+        Secp256R1VerifyError::InvalidRecoveryParam {
             backtrace: BT::capture(),
         }
     }
 }
-
-impl From<PairingEquality> for CryptoError {
-    #[track_caller]
-    fn from(value: PairingEquality) -> Self {
-        Self::PairingEquality {
-            source: value,
-            backtrace: BT::capture(),
-        }
-    }
-}
-
-impl From<InvalidPoint> for CryptoError {
+impl From<InvalidPoint> for Secp256R1VerifyError {
     #[track_caller]
     fn from(value: InvalidPoint) -> Self {
         Self::InvalidPoint {
@@ -177,27 +76,40 @@ impl From<InvalidPoint> for CryptoError {
     }
 }
 
+impl From<Secp256R1VerifyError> for StdError {
+    fn from(err: Secp256R1VerifyError) -> Self {
+        match err {
+            Secp256R1VerifyError::GenericErr { msg, .. } => StdError::generic_err(msg),
+            Secp256R1VerifyError::InvalidHashFormat { .. } => {
+                StdError::generic_err("Invalid hash format")
+            }
+            Secp256R1VerifyError::InvalidPubkeyFormat { .. } => {
+                StdError::generic_err("Invalid public key format")
+            }
+            Secp256R1VerifyError::InvalidSignatureFormat { .. } => {
+                StdError::generic_err("Invalid signature format")
+            }
+            Secp256R1VerifyError::InvalidRecoveryParam { .. } => {
+                StdError::generic_err("Invalid recovery parameter")
+            }
+            Secp256R1VerifyError::InvalidPoint { source, .. } => match source {
+                InvalidPoint::InvalidLength { expected, actual } => StdError::generic_err(format!(
+                    "Invalid input length for point: Expected {expected}, actual: {actual}"
+                )),
+                InvalidPoint::DecodingError {} => StdError::generic_err("Invalid point"),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // constructors
-    #[test]
-    fn batch_err_works() {
-        let error = CryptoError::batch_err("something went wrong in a batch way");
-        match error {
-            CryptoError::BatchErr { msg, .. } => {
-                assert_eq!(msg, "something went wrong in a batch way")
-            }
-            _ => panic!("wrong error type!"),
-        }
-    }
-
     #[test]
     fn generic_err_works() {
-        let error = CryptoError::generic_err("something went wrong in a general way");
+        let error = Secp256R1VerifyError::generic_err("something went wrong in a general way");
         match error {
-            CryptoError::GenericErr { msg, .. } => {
+            Secp256R1VerifyError::GenericErr { msg, .. } => {
                 assert_eq!(msg, "something went wrong in a general way")
             }
             _ => panic!("wrong error type!"),
@@ -206,27 +118,27 @@ mod tests {
 
     #[test]
     fn invalid_hash_format_works() {
-        let error = CryptoError::invalid_hash_format();
+        let error = Secp256R1VerifyError::invalid_hash_format();
         match error {
-            CryptoError::InvalidHashFormat { .. } => {}
+            Secp256R1VerifyError::InvalidHashFormat { .. } => {}
             _ => panic!("wrong error type!"),
         }
     }
 
     #[test]
     fn invalid_signature_format_works() {
-        let error = CryptoError::invalid_signature_format();
+        let error = Secp256R1VerifyError::invalid_signature_format();
         match error {
-            CryptoError::InvalidSignatureFormat { .. } => {}
+            Secp256R1VerifyError::InvalidSignatureFormat { .. } => {}
             _ => panic!("wrong error type!"),
         }
     }
 
     #[test]
     fn invalid_pubkey_format_works() {
-        let error = CryptoError::invalid_pubkey_format();
+        let error = Secp256R1VerifyError::invalid_pubkey_format();
         match error {
-            CryptoError::InvalidPubkeyFormat { .. } => {}
+            Secp256R1VerifyError::InvalidPubkeyFormat { .. } => {}
             _ => panic!("wrong error type!"),
         }
     }
