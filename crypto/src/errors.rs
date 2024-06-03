@@ -1,4 +1,3 @@
-use alloc::format;
 use alloc::string::String;
 use core::fmt::Debug;
 use cosmwasm_std::StdError;
@@ -9,15 +8,6 @@ use crate::BT;
 pub type Secp256R1Result<T> = core::result::Result<T, Secp256R1VerifyError>;
 
 #[derive(Debug, Display)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum InvalidPoint {
-    #[display("Invalid input length for point (must be in compressed format): Expected {expected}, actual: {actual}")]
-    InvalidLength { expected: usize, actual: usize },
-    #[display("Invalid point")]
-    DecodingError {},
-}
-
-#[derive(Display, Debug)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum Secp256R1VerifyError {
     #[display("Crypto error: {msg}")]
@@ -30,11 +20,21 @@ pub enum Secp256R1VerifyError {
     InvalidSignatureFormat { backtrace: BT },
     #[display("Invalid recovery parameter. Supported values: 0 and 1.")]
     InvalidRecoveryParam { backtrace: BT },
-    #[display("Invalid point: {source}")]
-    InvalidPoint { source: InvalidPoint, backtrace: BT },
 }
 
 impl Secp256R1VerifyError {
+    /// Numeric error code that can easily be passed over the
+    /// contract VM boundary.
+    pub fn code(&self) -> u32 {
+        match self {
+            Secp256R1VerifyError::InvalidHashFormat { .. } => 3,
+            Secp256R1VerifyError::InvalidSignatureFormat { .. } => 4,
+            Secp256R1VerifyError::InvalidPubkeyFormat { .. } => 5,
+            Secp256R1VerifyError::GenericErr { .. } => 10,
+            Secp256R1VerifyError::InvalidRecoveryParam { .. } => 6,
+        }
+    }
+
     pub fn generic_err(msg: impl Into<String>) -> Self {
         Secp256R1VerifyError::GenericErr {
             msg: msg.into(),
@@ -59,18 +59,8 @@ impl Secp256R1VerifyError {
             backtrace: BT::capture(),
         }
     }
-
     pub fn invalid_recovery_param() -> Self {
         Secp256R1VerifyError::InvalidRecoveryParam {
-            backtrace: BT::capture(),
-        }
-    }
-}
-impl From<InvalidPoint> for Secp256R1VerifyError {
-    #[track_caller]
-    fn from(value: InvalidPoint) -> Self {
-        Self::InvalidPoint {
-            source: value,
             backtrace: BT::capture(),
         }
     }
@@ -92,12 +82,6 @@ impl From<Secp256R1VerifyError> for StdError {
             Secp256R1VerifyError::InvalidRecoveryParam { .. } => {
                 StdError::generic_err("Invalid recovery parameter")
             }
-            Secp256R1VerifyError::InvalidPoint { source, .. } => match source {
-                InvalidPoint::InvalidLength { expected, actual } => StdError::generic_err(format!(
-                    "Invalid input length for point: Expected {expected}, actual: {actual}"
-                )),
-                InvalidPoint::DecodingError {} => StdError::generic_err("Invalid point"),
-            },
         }
     }
 }
@@ -105,6 +89,8 @@ impl From<Secp256R1VerifyError> for StdError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // constructors
     #[test]
     fn generic_err_works() {
         let error = Secp256R1VerifyError::generic_err("something went wrong in a general way");
