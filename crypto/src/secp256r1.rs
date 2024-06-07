@@ -146,7 +146,7 @@ mod tests {
     use std::io::BufReader;
 
     use crate::secp256r1_recover_pubkey;
-    use alloc::string::String;
+    use alloc::{string::String, vec};
     use ecdsa::RecoveryId;
     use p256::{
         ecdsa::signature::DigestSigner, ecdsa::SigningKey, elliptic_curve::rand_core::OsRng,
@@ -182,6 +182,38 @@ mod tests {
         signature: String,
         #[serde(rename = "pubkey")]
         public_key: String,
+    }
+
+    #[test]
+    fn sanity_check_read_hash() {
+        let message_hash:Vec<u8> = vec![];
+        let fn_res = read_hash(&message_hash);
+        assert!(fn_res.is_err());
+        let message_digest = Sha256::new().chain(MSG);
+
+        // Signing
+        let secret_key = SigningKey::random(&mut OsRng); // Serialize with `::to_bytes()`
+
+        // Note: the signature type must be annotated or otherwise inferrable as
+        // `Signer` has many impls of the `Signer` trait (for both regular and
+        // recoverable signature types).
+        let (signature, _recovery_id): (Signature, RecoveryId) =
+            secret_key.sign_digest(message_digest);
+
+        let public_key = VerifyingKey::from(&secret_key); // Serialize with `::to_encoded_point()`
+        let res = secp256r1_verify(
+            &vec![],
+            signature.to_bytes().as_slice(), 
+            public_key.to_encoded_point(false).as_bytes()
+        );
+        assert!(res.is_err());
+        let err = res.unwrap_err();
+        match err {
+            Secp256R1VerifyError::InvalidHashFormat {..} => {
+                assert!(true);
+            }
+            _ => panic!("expected something else")
+        }
     }
 
     #[test]

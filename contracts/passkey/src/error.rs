@@ -26,7 +26,7 @@ pub enum ContractError {
     #[error("Invalid signature format")]
     InvalidSignatureFormat,
     #[error("Generic crypto error: {0}")]
-    GenericCryptoError(String),
+    GenericError(String),
 }
 
 // Implement From<CryptoError> for ContractError
@@ -36,8 +36,8 @@ impl From<Secp256R1VerifyError> for ContractError {
             3 => ContractError::InvalidHashFormat,
             4 => ContractError::InvalidSignatureFormat,
             5 => ContractError::InvalidPubkeyFormat,
-            10 => ContractError::GenericCryptoError(err.to_string()),
-            _ => ContractError::GenericCryptoError(format!("Unknown crypto error: {}", err)),
+            10 => ContractError::GenericError(err.to_string()),
+            _ => ContractError::GenericError(format!("Unknown crypto error: {}", err)),
         }
     }
 }

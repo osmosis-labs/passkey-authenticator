@@ -1,6 +1,5 @@
 use alloc::string::String;
 use core::fmt::Debug;
-use cosmwasm_std::StdError;
 use derive_more::Display;
 
 use crate::BT;
@@ -62,26 +61,6 @@ impl Secp256R1VerifyError {
     pub fn invalid_recovery_param() -> Self {
         Secp256R1VerifyError::InvalidRecoveryParam {
             backtrace: BT::capture(),
-        }
-    }
-}
-
-impl From<Secp256R1VerifyError> for StdError {
-    fn from(err: Secp256R1VerifyError) -> Self {
-        match err {
-            Secp256R1VerifyError::GenericErr { msg, .. } => StdError::generic_err(msg),
-            Secp256R1VerifyError::InvalidHashFormat { .. } => {
-                StdError::generic_err("Invalid hash format")
-            }
-            Secp256R1VerifyError::InvalidPubkeyFormat { .. } => {
-                StdError::generic_err("Invalid public key format")
-            }
-            Secp256R1VerifyError::InvalidSignatureFormat { .. } => {
-                StdError::generic_err("Invalid signature format")
-            }
-            Secp256R1VerifyError::InvalidRecoveryParam { .. } => {
-                StdError::generic_err("Invalid recovery parameter")
-            }
         }
     }
 }
