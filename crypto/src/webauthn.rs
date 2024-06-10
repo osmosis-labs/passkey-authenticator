@@ -6,7 +6,7 @@ use sha2::{digest::generic_array::GenericArray, Digest, Sha256};
 use crate::{secp256r1_verify, Secp256R1Result};
 
 #[allow(clippy::too_many_arguments)]
-pub fn verify_webauthn(
+pub fn webauthn_verify(
     authenticator_data: &[u8],
     client_data_json: &str,
     challenge: &[u8],

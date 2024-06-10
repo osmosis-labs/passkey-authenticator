@@ -5,7 +5,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg, VerifyResponse};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response};
-use crypto::{secp256r1_verify, verify_webauthn};
+use crypto::{secp256r1_verify, webauthn_verify};
 use sha2::{Digest, Sha256};
 
 // const CONTRACT_NAME: &str = "crates.io:passkey";
@@ -67,7 +67,7 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractEr
             message,
             signature,
             public_key,
-        } => to_json_binary(&query_verify_secp256r1(
+        } => to_json_binary(&verify_secp256r1(
             message.as_slice(),
             signature.as_slice(),
             public_key.as_slice(),
@@ -80,7 +80,7 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractEr
             y,
             r,
             s,
-        } => to_json_binary(&query_verify_webauthn(
+        } => to_json_binary(&verify_webauthn(
             &authenticator_data,
             &client_data_json,
             &challenge,
@@ -93,7 +93,7 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractEr
     .map_err(ContractError::from)
 }
 
-pub fn query_verify_secp256r1(
+pub fn verify_secp256r1(
     message: &[u8],
     signature: &[u8],
     public_key: &[u8],
@@ -114,7 +114,7 @@ pub fn query_verify_secp256r1(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn query_verify_webauthn(
+pub fn verify_webauthn(
     authenticator_data: &[u8],
     client_data_json: &str,
     challenge: &[u8],
@@ -123,7 +123,7 @@ pub fn query_verify_webauthn(
     r: &[u8],
     s: &[u8],
 ) -> Result<VerifyResponse, ContractError> {
-    let verifies = verify_webauthn(authenticator_data, client_data_json, challenge, x, y, r, s)?;
+    let verifies = webauthn_verify(authenticator_data, client_data_json, challenge, x, y, r, s)?;
     Ok(VerifyResponse { verifies })
 }
 
