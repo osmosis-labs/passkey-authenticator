@@ -12,9 +12,7 @@ pub enum DenomRemovalTarget {
 }
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    // pub admin: Option<String>,
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {

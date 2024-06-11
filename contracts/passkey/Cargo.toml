@@ -13,7 +13,6 @@ cw-storage-plus = "1.1.0"
 cw2 = "1.1.2"
 sha2 = "0.10"
 itertools = "0.12.1"
-jsonwebtoken = "9.3.0"
 osmosis-authenticators = "0.22.0-alpha.19"
 osmosis-std = { git = "https://github.com/osmosis-labs/osmosis-rust", rev = "c475cb9" }
 rstest = "0.18.2"

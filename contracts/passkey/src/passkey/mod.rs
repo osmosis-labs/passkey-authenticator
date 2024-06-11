@@ -1,8 +1,11 @@
+mod attestation;
 mod error;
 mod params;
+
 use cosmwasm_std::DepsMut;
 
 use crate::error::ContractError;
+
 pub use error::PasskeyError;
 pub use params::PasskeyParams;
 
