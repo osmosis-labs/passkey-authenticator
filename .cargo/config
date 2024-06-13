@@ -3,6 +3,6 @@ wasm = "build --release --lib --target wasm32-unknown-unknown"
 unit-test = "test --lib"
 all-test = "test --workspace"
 schema = "run --bin schema"
-
+optimize = "run-script optimize"
 [env]
 RUSTFLAGS = "-C link-arg=-s"
