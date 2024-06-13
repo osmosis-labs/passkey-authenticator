@@ -7,7 +7,7 @@ use p256::{
 };
 
 use crate::ecdsa::{ECDSA_COMPRESSED_PUBKEY_LEN, ECDSA_UNCOMPRESSED_PUBKEY_LEN};
-use crate::errors::{CryptoError, CryptoResult};
+use crate::errors::{Secp256R1Result, Secp256R1VerifyError};
 use crate::identity_digest::Identity256;
 
 /// ECDSA secp256r1 implementation.
@@ -24,7 +24,7 @@ pub fn secp256r1_verify(
     message_hash: &[u8],
     signature: &[u8],
     public_key: &[u8],
-) -> CryptoResult<bool> {
+) -> Secp256R1Result<bool> {
     let message_hash = read_hash(message_hash)?;
     let signature = read_signature(signature)?;
     check_pubkey(public_key)?;
@@ -33,7 +33,7 @@ pub fn secp256r1_verify(
     let message_digest = Identity256::new().chain(message_hash);
 
     let mut signature = Signature::from_bytes(&signature.into())
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
+        .map_err(|e| Secp256R1VerifyError::generic_err(e.to_string()))?;
 
     // High-S signatures require normalization since our verification implementation
     // rejects them by default. If we had a verifier that does not restrict to
@@ -43,7 +43,7 @@ pub fn secp256r1_verify(
     }
 
     let public_key = VerifyingKey::from_sec1_bytes(public_key)
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
+        .map_err(|e| Secp256R1VerifyError::generic_err(e.to_string()))?;
 
     match public_key.verify_digest(message_digest, &signature) {
         Ok(()) => Ok(true),
@@ -68,23 +68,23 @@ pub fn secp256r1_recover_pubkey(
     message_hash: &[u8],
     signature: &[u8],
     recovery_param: u8,
-) -> Result<Vec<u8>, CryptoError> {
+) -> Result<Vec<u8>, Secp256R1VerifyError> {
     let message_hash = read_hash(message_hash)?;
     let signature = read_signature(signature)?;
 
     // params other than 0, 1, 2 or 3 are explicitly not supported
     let Some(id) = RecoveryId::from_byte(recovery_param) else {
-        return Err(CryptoError::invalid_recovery_param());
+        return Err(Secp256R1VerifyError::invalid_recovery_param());
     };
 
     // Compose extended signature
     let signature = p256::ecdsa::Signature::from_bytes(&signature.into())
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
+        .map_err(|e| Secp256R1VerifyError::generic_err(e.to_string()))?;
 
     // Recover
     let message_digest = Identity256::new().chain(message_hash);
     let pubkey = p256::ecdsa::VerifyingKey::recover_from_digest(message_digest, &signature, id)
-        .map_err(|e| CryptoError::generic_err(e.to_string()))?;
+        .map_err(|e| Secp256R1VerifyError::generic_err(e.to_string()))?;
     let encoded: Vec<u8> = pubkey.to_encoded_point(false).as_bytes().into();
     Ok(encoded)
 }
@@ -92,9 +92,9 @@ pub fn secp256r1_recover_pubkey(
 /// Error raised when hash is not 32 bytes long
 struct InvalidSecp256r1HashFormat;
 
-impl From<InvalidSecp256r1HashFormat> for CryptoError {
+impl From<InvalidSecp256r1HashFormat> for Secp256R1VerifyError {
     fn from(_original: InvalidSecp256r1HashFormat) -> Self {
-        CryptoError::invalid_hash_format()
+        Secp256R1VerifyError::invalid_hash_format()
     }
 }
 
@@ -105,9 +105,9 @@ fn read_hash(data: &[u8]) -> Result<[u8; 32], InvalidSecp256r1HashFormat> {
 /// Error raised when signature is not 64 bytes long (32 bytes r, 32 bytes s)
 struct InvalidSecp256r1SignatureFormat;
 
-impl From<InvalidSecp256r1SignatureFormat> for CryptoError {
+impl From<InvalidSecp256r1SignatureFormat> for Secp256R1VerifyError {
     fn from(_original: InvalidSecp256r1SignatureFormat) -> Self {
-        CryptoError::invalid_signature_format()
+        Secp256R1VerifyError::invalid_signature_format()
     }
 }
 
@@ -120,9 +120,9 @@ fn read_signature(data: &[u8]) -> Result<[u8; 64], InvalidSecp256r1SignatureForm
 /// 2. Compressed: 33 bytes starting with 0x02 or 0x03
 struct InvalidSecp256r1PubkeyFormat;
 
-impl From<InvalidSecp256r1PubkeyFormat> for CryptoError {
+impl From<InvalidSecp256r1PubkeyFormat> for Secp256R1VerifyError {
     fn from(_original: InvalidSecp256r1PubkeyFormat) -> Self {
-        CryptoError::invalid_pubkey_format()
+        Secp256R1VerifyError::invalid_pubkey_format()
     }
 }
 
@@ -146,7 +146,7 @@ mod tests {
     use std::io::BufReader;
 
     use crate::secp256r1_recover_pubkey;
-    use alloc::string::String;
+    use alloc::{string::String, vec};
     use ecdsa::RecoveryId;
     use p256::{
         ecdsa::signature::DigestSigner, ecdsa::SigningKey, elliptic_curve::rand_core::OsRng,
@@ -182,6 +182,38 @@ mod tests {
         signature: String,
         #[serde(rename = "pubkey")]
         public_key: String,
+    }
+
+    #[test]
+    fn sanity_check_read_hash() {
+        let message_hash:Vec<u8> = vec![];
+        let fn_res = read_hash(&message_hash);
+        assert!(fn_res.is_err());
+        let message_digest = Sha256::new().chain(MSG);
+
+        // Signing
+        let secret_key = SigningKey::random(&mut OsRng); // Serialize with `::to_bytes()`
+
+        // Note: the signature type must be annotated or otherwise inferrable as
+        // `Signer` has many impls of the `Signer` trait (for both regular and
+        // recoverable signature types).
+        let (signature, _recovery_id): (Signature, RecoveryId) =
+            secret_key.sign_digest(message_digest);
+
+        let public_key = VerifyingKey::from(&secret_key); // Serialize with `::to_encoded_point()`
+        let res = secp256r1_verify(
+            &vec![],
+            signature.to_bytes().as_slice(), 
+            public_key.to_encoded_point(false).as_bytes()
+        );
+        assert!(res.is_err());
+        let err = res.unwrap_err();
+        match err {
+            Secp256R1VerifyError::InvalidHashFormat {..} => {
+                assert!(true);
+            }
+            _ => panic!("expected something else")
+        }
     }
 
     #[test]
@@ -331,12 +363,12 @@ mod tests {
 
         let recovery_param: u8 = 4;
         match secp256r1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap_err() {
-            CryptoError::InvalidRecoveryParam { .. } => {}
+            Secp256R1VerifyError::InvalidRecoveryParam { .. } => {}
             err => panic!("Unexpected error: {err}"),
         }
         let recovery_param: u8 = 255;
         match secp256r1_recover_pubkey(&message_hash, &r_s, recovery_param).unwrap_err() {
-            CryptoError::InvalidRecoveryParam { .. } => {}
+            Secp256R1VerifyError::InvalidRecoveryParam { .. } => {}
             err => panic!("Unexpected error: {err}"),
         }
     }

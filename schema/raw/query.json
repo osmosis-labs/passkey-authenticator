@@ -3,30 +3,132 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "Cosmos format (secp256r1 verification scheme).",
       "type": "object",
       "required": [
-        "admin"
+        "verify_secp256_r1_signature"
       ],
       "properties": {
-        "admin": {
+        "verify_secp256_r1_signature": {
           "type": "object",
+          "required": [
+            "message",
+            "public_key",
+            "signature"
+          ],
+          "properties": {
+            "message": {
+              "description": "Message to verify.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "public_key": {
+              "description": "Serialized compressed (33 bytes) or uncompressed (65 bytes) public key.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "signature": {
+              "description": "Serialized signature. Cosmos format (64 bytes).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            }
+          },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
     {
+      "description": "Webauthn component verification",
       "type": "object",
       "required": [
-        "admin_candidate"
+        "verify_webauthn"
       ],
       "properties": {
-        "admin_candidate": {
+        "verify_webauthn": {
           "type": "object",
+          "required": [
+            "authenticator_data",
+            "challenge",
+            "client_data_json",
+            "r",
+            "s",
+            "x",
+            "y"
+          ],
+          "properties": {
+            "authenticator_data": {
+              "description": "Authenticator data",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "challenge": {
+              "description": "Challenge value",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "client_data_json": {
+              "description": "Client data (JSON encoded)",
+              "type": "string"
+            },
+            "r": {
+              "description": "r component of signature\n\nThe representation of this component is a big-endian encoded 256bit integer",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "s": {
+              "description": "s component of signature\n\nThe representation of this component is a big-endian encoded 256bit integer",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "x": {
+              "description": "X coordinate of public key point\n\nUntagged big-endian serialized byte sequence representing the X coordinate on the secp256r1 elliptic curve",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "y": {
+              "description": "Y coordinate of public key point\n\nUntagged big-endian serialized byte sequence representing the Y coordinate on the secp256r1 elliptic curve",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            }
+          },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
 }
