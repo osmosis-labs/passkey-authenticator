@@ -5,6 +5,29 @@ use sha2::{digest::generic_array::GenericArray, Digest, Sha256};
 
 use crate::{secp256r1_verify, Secp256R1Result};
 
+/// Verifies a WebAuthn assertion using ECDSA secp256r1.
+///
+/// This function checks the authenticity of a WebAuthn assertion by verifying
+/// the signature against the provided public key and challenge, following
+/// the WebAuthn standards for the assertion verification procedure.
+///
+/// # Arguments
+///
+/// * `authenticator_data` - The authenticator data as per WebAuthn spec,
+///   which includes flags and counters.
+/// * `client_data_json` - The client data in JSON format provided by the client,
+///   which includes the challenge and other metadata.
+/// * `challenge` - The original challenge sent to the client during the WebAuthn
+///   request.
+/// * `x` - The x-coordinate of the public key in affine coordinates.
+/// * `y` - The y-coordinate of the public key in affine coordinates.
+/// * `r` - The r value of the ECDSA signature.
+/// * `s` - The s value of the ECDSA signature.
+///
+/// # Returns
+///
+/// A result indicating whether the signature is valid (`Ok(true)`) or not (`Ok(false)`).
+/// Errors are returned if there are issues with the verification process.
 #[allow(clippy::too_many_arguments)]
 pub fn webauthn_verify(
     authenticator_data: &[u8],
@@ -42,8 +65,8 @@ pub fn webauthn_verify(
         return Ok(false);
     }
 
-    // Does the challenge belong to the client data?
-    let b64_challenge = URL_SAFE_NO_PAD.encode(challenge);
+    // fails if the client data contains the challenge
+    let b64_challenge: alloc::string::String = URL_SAFE_NO_PAD.encode(challenge);
     if !client_data_json.contains(b64_challenge.as_str()) {
         return Ok(false);
     }
