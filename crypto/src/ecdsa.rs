@@ -13,3 +13,20 @@ pub(crate) const ECDSA_COMPRESSED_PUBKEY_LEN: usize = 33;
 pub(crate) const ECDSA_UNCOMPRESSED_PUBKEY_LEN: usize = 65;
 /// Max length of a serialized public key
 pub const ECDSA_PUBKEY_MAX_LEN: usize = ECDSA_UNCOMPRESSED_PUBKEY_LEN;
+
+/// Error raised when public key is not in one of the two supported formats:
+/// 1. Uncompressed: 65 bytes starting with 0x04
+/// 2. Compressed: 33 bytes starting with 0x02 or 0x03
+pub struct InvalidECDSAPubkeyFormat;
+pub fn check_pubkey(data: &[u8]) -> Result<(), InvalidECDSAPubkeyFormat> {
+    let ok = match data.first() {
+        Some(0x02) | Some(0x03) => data.len() == ECDSA_COMPRESSED_PUBKEY_LEN,
+        Some(0x04) => data.len() == ECDSA_UNCOMPRESSED_PUBKEY_LEN,
+        _ => false,
+    };
+    if ok {
+        Ok(())
+    } else {
+        Err(InvalidECDSAPubkeyFormat)
+    }
+}
