@@ -176,7 +176,6 @@ mod tests {
         IsError(E),
     }
 
-
     macro_rules! test_query {
         (
             $test_name:ident,
@@ -204,136 +203,136 @@ mod tests {
             }
         };
     }
+
+    use base64::{engine::general_purpose, Engine as _};
+
     test_query!(
-        secp256r1_signature_verify_works,
+        test_secp256r1_verify_with_js_values,
         vec![
             QueryMsg::VerifySecp256R1Signature {
-                message: hex::decode(&SECP256R1_MESSAGE_HEX).unwrap().into(),
-                signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
-                public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
+                message: general_purpose::STANDARD.decode(&"ed3IwP7TaxoLZ4GJQ6FTq/vD7q4kJ4PjzFRATLKwRyA=").unwrap().into(),
+                signature: general_purpose::STANDARD.decode(&"eTOhdL7n6vGzaPKA28lFm6ULrRREAQza88p6oG8GSIGzOEZIjftW6w/QckPWwjm7T2VLppfVZiouG8uG3A00ew==").unwrap().into(),
+                public_key: general_purpose::STANDARD.decode(&"BNjNEupcZ/L4oAwRJIk+3PpnVMTWzt5r4TvfIpXIEKl/paidLSo2DAyppNbHye1LKNPhmdZify5pbWicMQpbD0g=").unwrap().into(),
             }
         ],
+        AssertResult::IsResult(VerifyResponse { verifies: false }),
+        None
+    );
+
+    test_query!(
+        secp256r1_signature_verify_works,
+        vec![QueryMsg::VerifySecp256R1Signature {
+            message: hex::decode(&SECP256R1_MESSAGE_HEX).unwrap().into(),
+            signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
+            public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
+        }],
         AssertResult::IsResult(VerifyResponse { verifies: true }),
         None
     );
 
     test_query!(
         secp256r1_signature_verify_fails,
-        vec![
-            QueryMsg::VerifySecp256R1Signature {
-                message: hex::decode(&&{
-                    let mut message = hex::decode(SECP256R1_MESSAGE_HEX).unwrap();
-                    message[0] ^= 0x01;
-                    hex::encode(message)
-                })
-                .unwrap()
-                .into(),
-                signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
-                public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
-            }
-        ],
+        vec![QueryMsg::VerifySecp256R1Signature {
+            message: hex::decode(&&{
+                let mut message = hex::decode(SECP256R1_MESSAGE_HEX).unwrap();
+                message[0] ^= 0x01;
+                hex::encode(message)
+            })
+            .unwrap()
+            .into(),
+            signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
+            public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
+        }],
         AssertResult::IsResult(VerifyResponse { verifies: false }),
         None
     );
 
     test_query!(
         secp256r1_signature_verify_errors_on_invalid_hash_format,
-        vec![
-            QueryMsg::VerifySecp256R1Signature {
-                message: Binary(vec![]),
-                signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
-                public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
-            }
-        ],
+        vec![QueryMsg::VerifySecp256R1Signature {
+            message: Binary(vec![]),
+            signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
+            public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
+        }],
         AssertResult::IsError(ContractError::InvalidHashFormat),
         None
     );
 
     test_query!(
         secp256r1_signature_verify_errors_on_invalid_public_key_format,
-        vec![
-            QueryMsg::VerifySecp256R1Signature {
-                message: hex::decode(&SECP256R1_MESSAGE_HEX).unwrap().into(),
-                signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
-                public_key: hex::decode(&{ hex::encode(vec![]) }).unwrap().into(),
-            }
-        ],
+        vec![QueryMsg::VerifySecp256R1Signature {
+            message: hex::decode(&SECP256R1_MESSAGE_HEX).unwrap().into(),
+            signature: hex::decode(&SECP256R1_SIGNATURE_HEX).unwrap().into(),
+            public_key: hex::decode(&{ hex::encode(vec![]) }).unwrap().into(),
+        }],
         AssertResult::IsError(ContractError::InvalidPubkeyFormat),
         None
     );
 
     test_query!(
         secp256r1_signature_verify_errors_on_invalid_signature_format,
-        vec![
-            QueryMsg::VerifySecp256R1Signature {
-                message: hex::decode(&SECP256R1_MESSAGE_HEX).unwrap().into(),
-                signature: hex::decode(&&{ hex::encode(vec![]) }).unwrap().into(),
-                public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
-            }
-        ],
+        vec![QueryMsg::VerifySecp256R1Signature {
+            message: hex::decode(&SECP256R1_MESSAGE_HEX).unwrap().into(),
+            signature: hex::decode(&&{ hex::encode(vec![]) }).unwrap().into(),
+            public_key: hex::decode(&SECP256R1_PUBLIC_KEY_HEX).unwrap().into(),
+        }],
         AssertResult::IsError(ContractError::InvalidSignatureFormat),
         None
     );
 
     test_query!(
         webauthn_verify_works,
-        vec![
-            QueryMsg::VerifyWebauthn {
-                authenticator_data: WEBAUTHN_AUTHENTICATOR_DATA.into(),
-                client_data_json: WEBAUTHN_CLIENT_DATA_JSON.into(),
-                challenge: WEBAUTHN_CHALLENGE.into(),
-                x: WEBAUTHN_PUBLIC_KEY_X.into(),
-                y: WEBAUTHN_PUBLIC_KEY_Y.into(),
-                r: WEBAUTHN_SIGNATURE_R.into(),
-                s: WEBAUTHN_SIGNATURE_S.into(),
-            }
-        ],
+        vec![QueryMsg::VerifyWebauthn {
+            authenticator_data: WEBAUTHN_AUTHENTICATOR_DATA.into(),
+            client_data_json: WEBAUTHN_CLIENT_DATA_JSON.into(),
+            challenge: WEBAUTHN_CHALLENGE.into(),
+            x: WEBAUTHN_PUBLIC_KEY_X.into(),
+            y: WEBAUTHN_PUBLIC_KEY_Y.into(),
+            r: WEBAUTHN_SIGNATURE_R.into(),
+            s: WEBAUTHN_SIGNATURE_S.into(),
+        }],
         AssertResult::IsResult(VerifyResponse { verifies: true }),
         None
     );
 
     test_query!(
         webauthn_verify_fails_on_invalid_signature,
-        vec![
-            QueryMsg::VerifyWebauthn {
-                authenticator_data: WEBAUTHN_AUTHENTICATOR_DATA.into(),
-                client_data_json: WEBAUTHN_CLIENT_DATA_JSON.into(),
-                challenge: WEBAUTHN_CHALLENGE.into(),
-                x: WEBAUTHN_PUBLIC_KEY_X.into(),
-                y: WEBAUTHN_PUBLIC_KEY_Y.into(),
-                r: {
-                    let mut r = WEBAUTHN_SIGNATURE_R.to_vec();
-                    r[0] ^= 3;
-                    r.into()
-                },
-                s: WEBAUTHN_SIGNATURE_S.into(),
-            }
-        ],
+        vec![QueryMsg::VerifyWebauthn {
+            authenticator_data: WEBAUTHN_AUTHENTICATOR_DATA.into(),
+            client_data_json: WEBAUTHN_CLIENT_DATA_JSON.into(),
+            challenge: WEBAUTHN_CHALLENGE.into(),
+            x: WEBAUTHN_PUBLIC_KEY_X.into(),
+            y: WEBAUTHN_PUBLIC_KEY_Y.into(),
+            r: {
+                let mut r = WEBAUTHN_SIGNATURE_R.to_vec();
+                r[0] ^= 3;
+                r.into()
+            },
+            s: WEBAUTHN_SIGNATURE_S.into(),
+        }],
         AssertResult::IsResult(VerifyResponse { verifies: false }),
         None
     );
 
     test_query!(
         webauthn_verify_fails_on_invalid_signature2,
-        vec![
-            QueryMsg::VerifyWebauthn {
-                authenticator_data: WEBAUTHN_AUTHENTICATOR_DATA.into(),
-                client_data_json: {
-                    let mut client_data_json = WEBAUTHN_CLIENT_DATA_JSON.to_string();
-                    client_data_json.push_str("tampering with hashes is fun");
-                    client_data_json
-                },
-                challenge: WEBAUTHN_CHALLENGE.into(),
-                x: WEBAUTHN_PUBLIC_KEY_X.into(),
-                y: WEBAUTHN_PUBLIC_KEY_Y.into(),
-                r: {
-                    let mut r = WEBAUTHN_SIGNATURE_R.to_vec();
-                    r[0] ^= 3;
-                    r.into()
-                },
-                s: WEBAUTHN_SIGNATURE_S.into(),
-            }
-        ],
+        vec![QueryMsg::VerifyWebauthn {
+            authenticator_data: WEBAUTHN_AUTHENTICATOR_DATA.into(),
+            client_data_json: {
+                let mut client_data_json = WEBAUTHN_CLIENT_DATA_JSON.to_string();
+                client_data_json.push_str("tampering with hashes is fun");
+                client_data_json
+            },
+            challenge: WEBAUTHN_CHALLENGE.into(),
+            x: WEBAUTHN_PUBLIC_KEY_X.into(),
+            y: WEBAUTHN_PUBLIC_KEY_Y.into(),
+            r: {
+                let mut r = WEBAUTHN_SIGNATURE_R.to_vec();
+                r[0] ^= 3;
+                r.into()
+            },
+            s: WEBAUTHN_SIGNATURE_S.into(),
+        }],
         AssertResult::IsResult(VerifyResponse { verifies: false }),
         None
     );

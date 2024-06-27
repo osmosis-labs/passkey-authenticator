@@ -127,7 +127,7 @@ impl From<InvalidSecp256r1PubkeyFormat> for Secp256R1VerifyError {
 }
 
 fn check_pubkey(data: &[u8]) -> Result<(), InvalidSecp256r1PubkeyFormat> {
-    let ok = match data.first() {
+    let ok: bool = match data.first() {
         Some(0x02) | Some(0x03) => data.len() == ECDSA_COMPRESSED_PUBKEY_LEN,
         Some(0x04) => data.len() == ECDSA_UNCOMPRESSED_PUBKEY_LEN,
         _ => false,
@@ -216,6 +216,27 @@ mod tests {
         }
     }
 
+    use base64::{engine::general_purpose, Engine as _};
+    #[test]
+    fn test_secp256r1_verify_with_js_values() {
+        let message_base64 = "ed3IwP7TaxoLZ4GJQ6FTq/vD7q4kJ4PjzFRATLKwRyA=";
+        let signature_base64 = "eTOhdL7n6vGzaPKA28lFm6ULrRREAQza88p6oG8GSIGzOEZIjftW6w/QckPWwjm7T2VLppfVZiouG8uG3A00ew==";
+        let public_key_base64 = "BNjNEupcZ/L4oAwRJIk+3PpnVMTWzt5r4TvfIpXIEKl/paidLSo2DAyppNbHye1LKNPhmdZify5pbWicMQpbD0g=";
+
+        let message = general_purpose::STANDARD.decode(message_base64).unwrap();
+        let signature = general_purpose::STANDARD.decode(signature_base64).unwrap();
+        let public_key = general_purpose::STANDARD.decode(public_key_base64).unwrap();
+
+        let result = secp256r1_verify(&message, &signature, &public_key);
+
+        assert!(result.is_ok(), "Verification resulted in an error");
+        assert!(result.unwrap(), "Signature verification failed");
+
+        // Additional debugging information
+        // println!("Message length: {}", message.len());
+        // println!("Signature length: {}", signature.len());
+        // println!("Public key length: {}", public_key.len());
+    }
     #[test]
     fn test_secp256r1_verify() {
         // Explicit / external hashing

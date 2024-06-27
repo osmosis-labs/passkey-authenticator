@@ -1,9 +1,10 @@
 use cosmwasm_std::{DepsMut, Env, Response};
-use crypto::secp256r1_verify;
+// use crypto::secp256r1_verify;
 use osmosis_authenticators::AuthenticationRequest;
 
 use crate::{
-    contract::verify_secp256r1, error::ContractError, passkey::update_and_check_passkey
+    // contract::verify_secp256r1, 
+    error::ContractError, passkey::update_and_check_passkey
 };
 
 use super::validate_and_parse_params;

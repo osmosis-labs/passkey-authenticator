@@ -6,6 +6,11 @@
    1. We want to understand what the signed bytes are --    
    2. Use similar payload to one click trading but GRCP encoded and hit the node.
 
+construct the message correctly:
+sign bank send.
+mobile signing with r1
+async sendExecuteContractMsg(
+
 ## Step #2 Scaffolding - MVP for passkeys
 1. Write the authenticate function in the authenticator using the secp verify.
 2. Integrate unit tests, make sure that it's as production ready
